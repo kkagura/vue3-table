@@ -28,24 +28,34 @@
         </tr>
       </tbody>
     </table>
-    <div :class="ns.be('controller', 'column')">
+    <div :class="[ns.e('controller'), ns.em('controller', 'column')]">
       <div
-        :class="ns.bem('controller', 'column', 'bar')"
+        :class="{
+          [ns.em('controller', 'bar')]: true,
+          [ns.is('selected')]: isColSelected(colIdx),
+        }"
         v-for="(col, colIdx) in state.data.cols"
         :style="{ width: `${col.width}px` }"
         @click="actions.setSelectionCol(colIdx)"
       ></div>
     </div>
-    <div :class="ns.be('controller', 'row')">
+    <div :class="[ns.e('controller'), ns.em('controller', 'row')]">
       <div
-        :class="ns.bem('controller', 'row', 'bar')"
+        :class="{
+          [ns.em('controller', 'bar')]: true,
+          [ns.is('selected')]: isRowSelected(rowIdx),
+        }"
         v-for="(row, rowIdx) in state.data.rows"
         :style="{ height: `${row.height}px` }"
         @click="actions.setSelectionRow(rowIdx)"
       ></div>
     </div>
     <div
-      :class="ns.be('controller', 'point')"
+      :class="[
+        ns.em('controller', 'point'),
+        ns.em('controller', 'bar'),
+        isAllSelected() ? ns.is('selected') : '',
+      ]"
       @click="actions.setSelectionAll"
     ></div>
   </div>
@@ -58,7 +68,7 @@
   ></Contextmenu>
 </template>
 <script lang="ts" setup>
-import { computed, PropType, provide, reactive, ref } from "vue";
+import { computed, PropType, provide, reactive } from "vue";
 import Contextmenu from "./components/Contextmenu.vue";
 import { useNamespace } from "./hooks/useNameSpace";
 import { useStore } from "./store";
@@ -79,10 +89,10 @@ provide(tableContextKey, store);
 const ns = useNamespace("table");
 
 const init = () => {
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < 5; i++) {
     actions.insertCol(i);
   }
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < 5; i++) {
     actions.insertRow(i);
   }
 };
@@ -167,6 +177,41 @@ const handleSelectionInteraction = (e: MouseEvent) => {
   window.addEventListener("mouseup", handleMouseup);
   window.addEventListener("mouseleave", handleMouseup);
 };
+//  是否整行都被选中
+const isRowSelected = (i: number) => {
+  if (!state.selectionRange) {
+    return false;
+  }
+  const [[r1, c1], [r2, c2]] = state.selectionRange;
+  if (i >= r1 && i <= r2) {
+    return c1 === 0 && c2 >= state.data.cols.length - 1;
+  }
+  return false;
+};
+//  是否整列都被选中
+const isColSelected = (i: number) => {
+  if (!state.selectionRange) {
+    return false;
+  }
+  const [[r1, c1], [r2, c2]] = state.selectionRange;
+  if (i >= c1 && i <= c2) {
+    return r1 === 0 && r2 >= state.data.rows.length - 1;
+  }
+  return false;
+};
+//  是否选中所有单元格
+const isAllSelected = () => {
+  if (!state.selectionRange) {
+    return false;
+  }
+  const [[r1, c1], [r2, c2]] = state.selectionRange;
+  return (
+    r1 === 0 &&
+    c1 === 0 &&
+    r2 >= state.data.rows.length - 1 &&
+    c2 >= state.data.cols.length - 1
+  );
+};
 
 //  处理右键面板
 const contextmenuContext = reactive({
@@ -176,7 +221,6 @@ const contextmenuContext = reactive({
     y: 0,
   },
 });
-
 const contextmenus = computed<ContextmenuItemData[]>(() => {
   const selected = utils.getSelectionCells();
   const selectionLength = selected.length;
@@ -270,6 +314,7 @@ const handleMenuClick = (commond: string, context: any) => {
   handlers[commond] && handlers[commond](context);
 };
 
+//  注册事件
 mousedownEvents.push(handleSelectionInteraction);
 </script>
 
@@ -296,14 +341,9 @@ mousedownEvents.push(handleSelectionInteraction);
       }
     }
   }
-  &-controller__column {
+  &__controller {
     position: absolute;
-    display: flex;
-    height: 14px;
-    left: 20px;
-    top: 7px;
     background-color: #f4f5f5;
-    border-right: 1px solid #d8dad9;
     &--bar {
       border-width: 1px 0 1px 1px;
       border-color: #d8dad9;
@@ -312,40 +352,36 @@ mousedownEvents.push(handleSelectionInteraction);
       &:hover {
         background-color: #e8e9e8;
       }
-    }
-  }
-  &-controller__row {
-    position: absolute;
-    width: 14px;
-    left: 7px;
-    top: 20px;
-    background-color: #f4f5f5;
-    border-bottom: 1px solid #d8dad9;
-    &--bar {
-      border-width: 1px 1px 0px 1px;
-      border-color: #d8dad9;
-      border-style: solid;
-      cursor: pointer;
-      &:hover {
-        background-color: #e8e9e8;
+      &.is-selected {
+        background-color: rgba(51, 132, 245, 0.8);
       }
     }
-  }
-
-  &-controller__point {
-    position: absolute;
-    top: 7px;
-    left: 7px;
-    background-color: #f4f5f5;
-    border-width: 1px 0 0px 1px;
-    border-color: #d8dad9;
-    border-style: solid;
-    width: 13px;
-    height: 13px;
-    border-top-left-radius: 50%;
-    cursor: pointer;
-    &:hover {
-      background-color: #e8e9e8;
+    &--column {
+      display: flex;
+      height: 14px;
+      left: 20px;
+      top: 7px;
+      border-right: 1px solid #d8dad9;
+    }
+    &--row {
+      width: 14px;
+      left: 7px;
+      top: 20px;
+      border-bottom: 1px solid #d8dad9;
+      .fe-table__controller--bar {
+        border-width: 1px 1px 0px 1px;
+      }
+    }
+    &--point {
+      background-color: #f4f5f5;
+      position: absolute;
+      top: 7px;
+      left: 7px;
+      border-width: 1px 0 0px 1px;
+      border-style: solid;
+      width: 13px;
+      height: 13px;
+      border-top-left-radius: 50%;
     }
   }
 }

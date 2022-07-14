@@ -263,10 +263,6 @@ export function useStore(state: State) {
         cell.merged = true;
       }
     });
-    state.selectionRange = [
-      [minRow, minCol],
-      [minRow, minCol],
-    ];
   };
 
   const splitCell = () => {
