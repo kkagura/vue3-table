@@ -5,6 +5,8 @@ export const defaultCell: Cell = {
   colspan: 1,
   field: "",
   contentType: "input",
+  merged: false,
+  value: "",
 };
 
 export const defaultRowHeight = 80;

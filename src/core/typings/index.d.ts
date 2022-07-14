@@ -3,6 +3,8 @@ export interface Cell {
   colspan: number;
   field: string;
   contentType: string;
+  merged: boolean;
+  value: any;
 }
 
 export interface Col {
