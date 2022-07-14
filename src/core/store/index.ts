@@ -1,4 +1,4 @@
-import { reactive } from "vue";
+import { reactive, watch } from "vue";
 import { defaultCell, defaultColWidth, defaultRowHeight } from "../config";
 import { Col, Coordinate, Row, State, Cell } from "../typings";
 import { isRangeIntersected } from "../utils";
@@ -94,7 +94,7 @@ export function useStore(state: State) {
       }
     });
     const colCount = state.data.cols.length - 1;
-    state.selectRange = [
+    state.selectionRange = [
       [startRow, 0],
       [endRow, colCount],
     ];
@@ -121,14 +121,14 @@ export function useStore(state: State) {
       }
     });
     const rowCount = state.data.rows.length - 1;
-    state.selectRange = [
+    state.selectionRange = [
       [0, startCol],
       [rowCount, endCol],
     ];
   };
 
   const setSelectionAll = () => {
-    state.selectRange = [
+    state.selectionRange = [
       [0, 0],
       [state.data.rows.length - 1, state.data.cols.length - 1],
     ];
@@ -218,18 +218,35 @@ export function useStore(state: State) {
         }
       }
     });
-    state.selectRange = [
+    state.selectionRange = [
       [minx, miny],
       [maxx, maxy],
     ];
   };
 
+  const getSelectionCells = () => {
+    if (!state.selectionRange) {
+      return [];
+    }
+    const cells = new Set<Cell>();
+    const [[r1, c1], [r2, c2]] = state.selectionRange;
+    for (let i = r1; i <= r2; i++) {
+      for (let j = c1; j <= c2; j++) {
+        const cell = getCell(i, j);
+        if (cell.merged !== true) {
+          cells.add(cell);
+        }
+      }
+    }
+    return Array.from(cells);
+  };
+
   const mergeCells = () => {
-    if (!state.selectRange) {
+    if (!state.selectionRange) {
       return;
     }
     const [[rowStartIdx, colStartIdx], [rowEndIdx, colEndIdx]] =
-      state.selectRange;
+      state.selectionRange;
     const minRow = Math.min(rowStartIdx, rowEndIdx);
     const maxRow = Math.max(rowStartIdx, rowEndIdx);
     const minCol = Math.min(colStartIdx, colEndIdx);
@@ -246,16 +263,33 @@ export function useStore(state: State) {
         cell.merged = true;
       }
     });
-    state.selectRange = [
+    state.selectionRange = [
       [minRow, minCol],
       [minRow, minCol],
     ];
+  };
+
+  const splitCell = () => {
+    if (state.selectionRange) {
+      const [r1, c1] = state.selectionRange[0];
+      const cell = getCell(r1, c1);
+      const { colspan, rowspan } = cell;
+      for (let i = r1; i < r1 + rowspan; i++) {
+        for (let j = c1; j < c1 + colspan; j++) {
+          const cell = getCell(i, j);
+          cell.merged = false;
+          cell.colspan = 1;
+          cell.rowspan = 1;
+        }
+      }
+    }
   };
 
   return {
     state,
     actions: {
       mergeCells,
+      splitCell,
       insertRow,
       insertCol,
       deleteCols,
@@ -264,6 +298,11 @@ export function useStore(state: State) {
       setSelectionRow,
       setSelectionCol,
       setSelectionAll,
+    },
+    utils: {
+      eachCell,
+      getCell,
+      getSelectionCells,
     },
   };
 }

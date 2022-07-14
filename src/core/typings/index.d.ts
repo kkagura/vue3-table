@@ -25,5 +25,5 @@ export interface State {
     cols: Col[];
     rows: Row[];
   };
-  selectRange: [Coordinate, Coordinate] | null;
+  selectionRange: [Coordinate, Coordinate] | null;
 }

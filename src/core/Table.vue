@@ -1,6 +1,6 @@
 <template>
   <div :class="ns.b()">
-    <table :class="ns.e('inner')">
+    <table :class="ns.e('inner')" :style="computedStyle">
       <colgroup>
         <col v-for="col in state.data.cols" :width="col.width" />
       </colgroup>
@@ -63,7 +63,7 @@ import Contextmenu from "./components/Contextmenu.vue";
 import { useNamespace } from "./hooks/useNameSpace";
 import { useStore } from "./store";
 import { tableContextKey } from "./tokens";
-import { Coordinate, State } from "./typings";
+import { Cell, Coordinate, State } from "./typings";
 import { ContextmenuItemData } from "./typings/contextmenu";
 import { findParent } from "./utils/dom";
 const props = defineProps({
@@ -73,7 +73,7 @@ const props = defineProps({
   },
 });
 const store = useStore(props.state);
-const { state, actions } = store;
+const { state, actions, utils } = store;
 provide(tableContextKey, store);
 
 const ns = useNamespace("table");
@@ -88,13 +88,20 @@ const init = () => {
 };
 init();
 
+const computedStyle = computed(() => {
+  const width = state.data.cols.reduce((prev, curr) => prev + curr.width, 0);
+  return {
+    width: `${width}px`,
+  };
+});
+
 //  判断单元格是否被选中
 const isCellSelected = (rowIdx: number, colIdx: number) => {
-  const { selectRange } = state;
-  if (!selectRange) {
+  const { selectionRange } = state;
+  if (!selectionRange) {
     return false;
   }
-  const [start, end] = selectRange;
+  const [start, end] = selectionRange;
   const minRowIdx = Math.min(start[0], end[0]);
   const maxRowIdx = Math.max(start[0], end[0]);
   const minColIdx = Math.min(start[1], end[1]);
@@ -121,7 +128,7 @@ const handleMousedown = (e: MouseEvent) => {
 const handleSelectionInteraction = (e: MouseEvent) => {
   const startDom = findParent(e.target as HTMLElement, cellCls);
   if (!startDom) {
-    state.selectRange = null;
+    state.selectionRange = null;
     return;
   }
   const colIdx = Number(startDom.getAttribute("data-col"));
@@ -169,14 +176,10 @@ const contextmenuContext = reactive({
     y: 0,
   },
 });
+
 const contextmenus = computed<ContextmenuItemData[]>(() => {
-  let selectionLength = 0;
-  if (state.selectRange) {
-    const [[rowStartIdx, colStartIdx], [rowEndIdx, colEndIdx]] =
-      state.selectRange;
-    selectionLength =
-      (rowEndIdx - rowStartIdx + 1) * (colEndIdx - colStartIdx + 1);
-  }
+  const selected = utils.getSelectionCells();
+  const selectionLength = selected.length;
   const columns = [
     {
       label: "在上方插入一行",
@@ -199,6 +202,14 @@ const contextmenus = computed<ContextmenuItemData[]>(() => {
       commond: "mergeCells",
       visible: selectionLength > 1,
     },
+    {
+      label: "拆分单元格",
+      commond: "splitCell",
+      visible:
+        selectionLength === 1 &&
+        selected[0] &&
+        (selected[0].colspan > 1 || selected[0].rowspan > 1),
+    },
   ];
   return columns;
 });
@@ -215,40 +226,43 @@ const handlers: Record<string, Function> = {
     actions.mergeCells();
   },
   insertColAtLeft() {
-    if (!state.selectRange) {
+    if (!state.selectionRange) {
       return;
     }
-    const colIdx = state.selectRange[0][1];
+    const colIdx = state.selectionRange[0][1];
     actions.insertCol(colIdx);
-    state.selectRange[0][1] += 1;
-    state.selectRange[1][1] += 1;
+    state.selectionRange[0][1] += 1;
+    state.selectionRange[1][1] += 1;
   },
   insertRowAtUp() {
-    if (!state.selectRange) {
+    if (!state.selectionRange) {
       return;
     }
-    const rowIdx = state.selectRange[0][0];
+    const rowIdx = state.selectionRange[0][0];
     actions.insertRow(rowIdx);
-    state.selectRange[0][0] = state.selectRange[0][0] + 1;
-    state.selectRange[1][0] = state.selectRange[1][0] + 1;
+    state.selectionRange[0][0] = state.selectionRange[0][0] + 1;
+    state.selectionRange[1][0] = state.selectionRange[1][0] + 1;
   },
   deleteSelectionRows() {
-    if (!state.selectRange) {
+    if (!state.selectionRange) {
       return;
     }
-    const start = state.selectRange[0][0];
-    const end = state.selectRange[1][0];
+    const start = state.selectionRange[0][0];
+    const end = state.selectionRange[1][0];
     actions.deleteRows(start, end - start + 1);
-    state.selectRange = null;
+    state.selectionRange = null;
   },
   deleteSelectionCols() {
-    if (!state.selectRange) {
+    if (!state.selectionRange) {
       return;
     }
-    const start = state.selectRange[0][1];
-    const end = state.selectRange[1][1];
+    const start = state.selectionRange[0][1];
+    const end = state.selectionRange[1][1];
     actions.deleteCols(start, end - start + 1);
-    state.selectRange = null;
+    state.selectionRange = null;
+  },
+  splitCell() {
+    actions.splitCell();
   },
 };
 const handleMenuClick = (commond: string, context: any) => {

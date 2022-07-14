@@ -8,7 +8,7 @@ const state = reactive({
     rows: [],
     cols: [],
   },
-  selectRange: null,
+  selectionRange: null,
 });
 </script>
 
