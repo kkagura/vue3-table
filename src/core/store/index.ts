@@ -3,14 +3,7 @@ import { defaultCell, defaultColWidth, defaultRowHeight } from "../config";
 import { Col, Coordinate, Row, State, Cell } from "../typings";
 import { isRangeIntersected } from "../utils";
 
-export function useStore() {
-  const state: State = reactive({
-    data: {
-      rows: [],
-      cols: [],
-    },
-    selectRange: null,
-  });
+export function useStore(state: State) {
   //  遍历所有单元格
   const eachCell = (
     callback: (cell: Cell, rowIdx: number, colIdx: number) => boolean | void

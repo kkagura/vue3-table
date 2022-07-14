@@ -44,7 +44,10 @@
         @click="actions.setSelectionRow(rowIdx)"
       ></div>
     </div>
-    <div :class="ns.be('controller', 'point')" @click="actions.setSelectionAll"></div>
+    <div
+      :class="ns.be('controller', 'point')"
+      @click="actions.setSelectionAll"
+    ></div>
   </div>
   <Contextmenu
     v-model:visible="contextmenuContext.show"
@@ -55,15 +58,21 @@
   ></Contextmenu>
 </template>
 <script lang="ts" setup>
-import { computed, provide, reactive, ref } from "vue";
+import { computed, PropType, provide, reactive, ref } from "vue";
 import Contextmenu from "./components/Contextmenu.vue";
 import { useNamespace } from "./hooks/useNameSpace";
 import { useStore } from "./store";
 import { tableContextKey } from "./tokens";
-import { Coordinate } from "./typings";
+import { Coordinate, State } from "./typings";
 import { ContextmenuItemData } from "./typings/contextmenu";
 import { findParent } from "./utils/dom";
-const store = useStore();
+const props = defineProps({
+  state: {
+    type: Object as PropType<State>,
+    required: true,
+  },
+});
+const store = useStore(props.state);
 const { state, actions } = store;
 provide(tableContextKey, store);
 
