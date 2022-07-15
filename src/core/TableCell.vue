@@ -6,7 +6,7 @@
       @blur="editable = false"
       ref="inputRef"
       :spellcheck="false"
-      @input="hanldeInput"
+      @input="handleInput"
     >
       {{ cell.value }}
     </div>
@@ -35,7 +35,7 @@ const handleClick = () => {
   });
 };
 
-const hanldeInput = (e: Event) => {
+const handleInput = (e: Event) => {
   const div = e.target as HTMLElement;
   cell.value.value = div.innerText;
 };
