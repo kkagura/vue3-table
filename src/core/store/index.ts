@@ -1,7 +1,7 @@
 import { reactive, watch } from "vue";
 import { defaultCell, defaultColWidth, defaultRowHeight } from "../config";
 import { Col, Coordinate, Row, State, Cell } from "../typings";
-import { isRangeIntersected } from "../utils";
+import { isObjectEqual, isRangeIntersected } from "../utils";
 
 export function useStore(state: State) {
   //  遍历所有单元格
@@ -218,10 +218,13 @@ export function useStore(state: State) {
         }
       }
     });
-    state.selectionRange = [
+    const newRange = [
       [minx, miny],
       [maxx, maxy],
-    ];
+    ] as [Coordinate, Coordinate];
+    if (!isObjectEqual(newRange, state.selectionRange) || true) {
+      state.selectionRange = newRange;
+    }
   };
 
   const getSelectionCells = () => {

@@ -7,7 +7,7 @@
       <TableHeader></TableHeader>
       <tbody
         @mousemove="handleControllerMousemove"
-        @mousedown.prevent="handleMousedown"
+        @mousedown="handleMousedown"
         @mouseup.prevent=""
         @contextmenu.prevent="handleContextmenuInteraction"
         :class="ns.e('body')"
@@ -121,7 +121,7 @@ init();
 const computedStyle = computed(() => {
   const width = state.data.cols.reduce((prev, curr) => prev + curr.width, 0);
   return {
-    width: `${width}px`,
+    width: `${width + 1}px`,
   };
 });
 
@@ -240,6 +240,7 @@ const contextmenuContext = reactive({
     x: 0,
     y: 0,
   },
+  coordinate: [0, 0] as Coordinate,
 });
 const contextmenus = computed<ContextmenuItemData[]>(() => {
   const selected = utils.getSelectionCells();
@@ -281,9 +282,17 @@ const handleContextmenuInteraction = (e: MouseEvent) => {
   if (e.which !== 3) {
     return;
   }
+  const target = e.target as HTMLElement;
+  const cell = findParent(target, cellCls);
+  if (!cell) {
+    return;
+  }
   contextmenuContext.position.x = e.clientX;
   contextmenuContext.position.y = e.clientY;
   contextmenuContext.show = true;
+  const col = cell.getAttribute("data-col");
+  const row = cell.getAttribute("data-row");
+  contextmenuContext.coordinate = [Number(row), Number(col)];
 };
 const handlers: Record<string, Function> = {
   mergeCells() {
@@ -381,6 +390,9 @@ mousedownEvents.push(handleSelectionInteraction);
 </script>
 
 <style lang="less">
+::selection {
+  background: rgba(27, 162, 227, 0.2);
+}
 .fe-table {
   margin: 20px;
   position: relative;
@@ -401,6 +413,7 @@ mousedownEvents.push(handleSelectionInteraction);
         bottom: 0;
         background-color: rgba(192, 217, 252, 0.5);
         pointer-events: none;
+        z-index: -1;
       }
     }
   }

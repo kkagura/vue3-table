@@ -7,3 +7,7 @@ export const isRangeIntersected = (
   const [start2, end2] = range2;
   return start1 <= end2 && end1 >= start2;
 };
+
+export const isObjectEqual = (obj1: any, obj2: any) => {
+  return JSON.stringify(obj1) === JSON.stringify(obj2);
+};
