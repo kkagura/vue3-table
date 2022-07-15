@@ -82,7 +82,6 @@ export const useRowControllerEvent = (state: State) => {
 };
 
 const ns = useNamespace("table");
-const bodyCls = ns.e("body");
 const tolerance = 4;
 export const useTableControllerEvent = (state: State) => {
   const resizeContext = reactive({
@@ -97,9 +96,23 @@ export const useTableControllerEvent = (state: State) => {
       return;
     }
     const target = e.target as HTMLElement;
-    const body = findParent(target, bodyCls);
-    if (!body) {
+    const body = findParent(target, ns.e("body"));
+    const cell = findParent(target, ns.e("cell"));
+    if (!body || !cell) {
+      resizeContext.visible = false;
       return;
+    }
+    const cellRect = cell.getBoundingClientRect();
+    const { top, left, right, bottom } = cellRect;
+    let xFlag = true;
+    let yFlag = true;
+    if (e.pageY - top > tolerance && bottom - e.pageY > tolerance) {
+      //  在被合并的单元格内时不触发
+      yFlag = false;
+    }
+    if (e.pageX - left > tolerance && right - e.pageY > tolerance) {
+      //  在被合并的单元格内时不触发
+      xFlag = false;
     }
     const rect = body.getBoundingClientRect();
     const x = e.pageX - rect.left;
@@ -108,25 +121,29 @@ export const useTableControllerEvent = (state: State) => {
     let distanceY = Infinity;
     let w = 0;
     let i = 0;
-    for (; i < state.data.cols.length; i++) {
-      const col = state.data.cols[i];
-      w += col.width;
-      if (Math.abs(w - x) < distanceX) {
-        distanceX = Math.abs(w - x);
-        if (distanceX <= tolerance) {
-          break;
+    if (xFlag) {
+      for (; i < state.data.cols.length; i++) {
+        const col = state.data.cols[i];
+        w += col.width;
+        if (Math.abs(w - x) < distanceX) {
+          distanceX = Math.abs(w - x);
+          if (distanceX <= tolerance) {
+            break;
+          }
         }
       }
     }
     let h = 0;
     let j = 0;
-    for (; j < state.data.rows.length; j++) {
-      const row = state.data.rows[j];
-      h += row.height;
-      if (Math.abs(h - y) < distanceY) {
-        distanceY = Math.abs(h - y);
-        if (distanceY <= tolerance) {
-          break;
+    if (yFlag) {
+      for (; j < state.data.rows.length; j++) {
+        const row = state.data.rows[j];
+        h += row.height;
+        if (Math.abs(h - y) < distanceY) {
+          distanceY = Math.abs(h - y);
+          if (distanceY <= tolerance) {
+            break;
+          }
         }
       }
     }
@@ -159,9 +176,19 @@ export const useTableControllerEvent = (state: State) => {
     const rect = body.getBoundingClientRect();
     const mousemove = (e: MouseEvent) => {
       if (resizeContext.dir === "x") {
-        resizeContext.position = e.pageX - rect.left - 2;
+        const offsetx = e.pageX - startx;
+        const col = state.data.cols[i];
+        const w = col.width + offsetx;
+        if (w >= 12) {
+          resizeContext.position = e.pageX - rect.left - 2;
+        }
       } else {
-        resizeContext.position = e.pageY - rect.top - 2;
+        const offsety = e.pageY - starty;
+        const row = state.data.rows[i];
+        const h = row.height + offsety;
+        if (h >= 12) {
+          resizeContext.position = e.pageY - rect.top - 2;
+        }
       }
     };
     const mouseup = (e: MouseEvent) => {
