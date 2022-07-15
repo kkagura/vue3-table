@@ -1,10 +1,12 @@
 <template>
-  <div :class="ns.b()">
+  <div :class="ns.b()" @mouseleave="handleControllerMouseleave">
     <table :class="ns.e('inner')" :style="computedStyle">
       <colgroup>
         <col v-for="col in state.data.cols" :width="col.width" />
       </colgroup>
+      <TableHeader></TableHeader>
       <tbody
+        @mousemove="handleControllerMousemove"
         @mousedown.prevent="handleMousedown"
         @mouseup.prevent=""
         @contextmenu.prevent="handleContextmenuInteraction"
@@ -23,7 +25,9 @@
               :colspan="cell.colspan"
               :data-col="colIdx"
               :data-row="rowIdx"
-            ></td>
+            >
+              <table-cell :cell="cell"></table-cell>
+            </td>
           </template>
         </tr>
       </tbody>
@@ -37,6 +41,8 @@
         v-for="(col, colIdx) in state.data.cols"
         :style="{ width: `${col.width}px` }"
         @click="actions.setSelectionCol(colIdx)"
+        @mousemove="handleColControllerMousemove"
+        @mousedown.prevent="handleColControllerMousedown($event, colIdx)"
       ></div>
     </div>
     <div :class="[ns.e('controller'), ns.em('controller', 'row')]">
@@ -48,6 +54,8 @@
         v-for="(row, rowIdx) in state.data.rows"
         :style="{ height: `${row.height}px` }"
         @click="actions.setSelectionRow(rowIdx)"
+        @mousemove="handleRowControllerMousemove"
+        @mousedown.prevent="handleRowControllerMousedown($event, rowIdx)"
       ></div>
     </div>
     <div
@@ -57,6 +65,11 @@
         isAllSelected() ? ns.is('selected') : '',
       ]"
       @click="actions.setSelectionAll"
+    ></div>
+    <div
+      @mousedown.prevent="handleControllerMousedown"
+      :class="ns.e('resizer')"
+      :style="resizeLineStyle"
     ></div>
   </div>
   <Contextmenu
@@ -76,6 +89,13 @@ import { tableContextKey } from "./tokens";
 import { Cell, Coordinate, State } from "./typings";
 import { ContextmenuItemData } from "./typings/contextmenu";
 import { findParent } from "./utils/dom";
+import {
+  useColControllerEvent,
+  useRowControllerEvent,
+  useTableControllerEvent,
+} from "./use/tableController";
+import TableCell from "./TableCell.vue";
+import TableHeader from "./TableHeader.vue";
 const props = defineProps({
   state: {
     type: Object as PropType<State>,
@@ -314,14 +334,57 @@ const handleMenuClick = (commond: string, context: any) => {
   handlers[commond] && handlers[commond](context);
 };
 
+//  拖拽相关事件
+const { handleColControllerMousedown, handleColControllerMousemove } =
+  useColControllerEvent(state);
+
+const { handleRowControllerMousedown, handleRowControllerMousemove } =
+  useRowControllerEvent(state);
+
+const {
+  resizeContext,
+  handleControllerMousemove,
+  handleControllerMouseleave,
+  handleControllerMousedown,
+} = useTableControllerEvent(state);
+const resizeLineStyle = computed(() => {
+  if (!resizeContext.visible) {
+    return {
+      display: "none",
+    };
+  }
+  if (resizeContext.dir === "x") {
+    const height =
+      state.data.rows.reduce((prev, curr) => prev + curr.height, 0) + 1;
+    return {
+      width: "4px",
+      height: `${height}px`,
+      top: 0,
+      left: `${resizeContext.position}px`,
+      cursor: "col-resize",
+    };
+  } else {
+    const width =
+      state.data.cols.reduce((prev, curr) => prev + curr.width, 0) + 1;
+    return {
+      height: "4px",
+      width: `${width}px`,
+      left: 0,
+      top: `${resizeContext.position}px`,
+      cursor: "row-resize",
+    };
+  }
+});
+
 //  注册事件
 mousedownEvents.push(handleSelectionInteraction);
 </script>
 
-<style lang="less" scoped>
+<style lang="less">
 .fe-table {
-  padding: 20px;
+  margin: 20px;
   position: relative;
+  width: fit-content;
   &__inner {
     border-collapse: collapse;
   }
@@ -359,14 +422,14 @@ mousedownEvents.push(handleSelectionInteraction);
     &--column {
       display: flex;
       height: 14px;
-      left: 20px;
-      top: 7px;
+      left: 0px;
+      top: -13px;
       border-right: 1px solid #d8dad9;
     }
     &--row {
       width: 14px;
-      left: 7px;
-      top: 20px;
+      left: -13px;
+      top: 0;
       border-bottom: 1px solid #d8dad9;
       .fe-table__controller--bar {
         border-width: 1px 1px 0px 1px;
@@ -375,14 +438,18 @@ mousedownEvents.push(handleSelectionInteraction);
     &--point {
       background-color: #f4f5f5;
       position: absolute;
-      top: 7px;
-      left: 7px;
+      top: -13px;
+      left: -13px;
       border-width: 1px 0 0px 1px;
       border-style: solid;
       width: 13px;
       height: 13px;
       border-top-left-radius: 50%;
     }
+  }
+  &__resizer {
+    position: absolute;
+    background-color: #3384f5;
   }
 }
 </style>
