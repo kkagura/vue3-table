@@ -50,7 +50,6 @@ const handleInput = (e: Event) => {
   bottom: 0;
   padding: 10px;
   display: flex;
-  align-items: center;
   line-height: 1;
   cursor: text;
   font-size: 14px;
@@ -60,9 +59,8 @@ const handleInput = (e: Event) => {
     background-color: transparent;
     font-size: 14px;
     line-height: 20px;
-    height: 20px;
+    min-height: 20px;
     width: 100%;
-    font-weight: 300;
     &:focus-visible {
       outline: none;
     }
